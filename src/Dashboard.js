@@ -69,7 +69,7 @@ function Dashboard() {
   }, [navigate]);
 
   const getUserDetails = async (userId, headers) => {
-    const userDetailsUrl = `/api/User/GetByUserId/${userId}?y=0`;
+    const userDetailsUrl = `${process.env.REACT_APP_API_URL}/api/User/GetByUserId/${userId}?y=0`;
 
     try {
       const response = await axios.get(userDetailsUrl, { headers });
@@ -86,7 +86,7 @@ function Dashboard() {
   };
 
   const getAttendanceData = async (userId, headers) => {
-    const attendanceUrl = `/api/SubjectAttendance/GetPresentAbsentStudent?isDateWise=false&termId=0&userId=${userId}&y=0`;
+    const attendanceUrl = `${process.env.REACT_APP_API_URL}/api/SubjectAttendance/GetPresentAbsentStudent?isDateWise=false&termId=0&userId=${userId}&y=0`;
 
     try {
       const response = await axios.get(attendanceUrl, { headers });
