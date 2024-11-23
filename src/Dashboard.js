@@ -73,6 +73,7 @@ function Dashboard() {
 
     try {
       const response = await axios.get(userDetailsUrl, { headers });
+      console.log(response)
       setUserDetails(response.data);
       setStatusMessage("User details fetched successfully!");
     } catch (error) {
@@ -89,6 +90,8 @@ function Dashboard() {
 
     try {
       const response = await axios.get(attendanceUrl, { headers });
+      console.log(response)
+
       setAttendanceData(response.data);
     } catch (error) {
       setStatusMessage(
