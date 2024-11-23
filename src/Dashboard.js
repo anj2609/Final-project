@@ -69,12 +69,10 @@ function Dashboard() {
   }, [navigate]);
 
   const getUserDetails = async (userId, headers) => {
-    const userDetailsUrl = `${process.env.REACT_APP_API_URL}/api/User/GetByUserId/${userId}?y=0`;
+    const userDetailsUrl = `/api/User/GetByUserId/${userId}?y=0`;
 
     try {
-      const response = await axios.get(userDetailsUrl, { headers:{ ...headers, // Existing headers from localStorage
-        Referer: process.env.REACT_APP_FRONTEND_URL, // Assuming your frontend URL is stored in an environment variable
-        Origin: process.env.REACT_APP_FRONTEND_URL,} });
+      const response = await axios.get(userDetailsUrl, { headers });
       console.log(response)
       setUserDetails(response.data);
       setStatusMessage("User details fetched successfully!");
@@ -88,12 +86,10 @@ function Dashboard() {
   };
 
   const getAttendanceData = async (userId, headers) => {
-    const attendanceUrl = `${process.env.REACT_APP_API_URL}/api/SubjectAttendance/GetPresentAbsentStudent?isDateWise=false&termId=0&userId=${userId}&y=0`;
+    const attendanceUrl = `/api/SubjectAttendance/GetPresentAbsentStudent?isDateWise=false&termId=0&userId=${userId}&y=0`;
 
     try {
-      const response = await axios.get(attendanceUrl, { headers:{ ...headers, // Existing headers from localStorage
-        Referer: process.env.REACT_APP_FRONTEND_URL, // Assuming your frontend URL is stored in an environment variable
-        Origin: process.env.REACT_APP_FRONTEND_URL,} });
+      const response = await axios.get(attendanceUrl, { headers });
       console.log(response)
 
       setAttendanceData(response.data);
