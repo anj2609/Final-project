@@ -28,4 +28,4 @@ Usage
 
 
 Hosted link 
-https://edugo-eta.vercel.app/
+https://eduroll.vercel.app/
