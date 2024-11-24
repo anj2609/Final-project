@@ -42,7 +42,7 @@ function Login() {
             });
 
             const data = response.data;
-            console.log(data)
+           
             if (data && data.access_token && data.SessionId && data['X-UserId'] && data.X_Token) {
 
                 localStorage.setItem("authToken", data.access_token);
@@ -80,7 +80,7 @@ function Login() {
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm">
-                <h2 className="text-2xl font-semibold text-center text-gray-800 mb-6">EduMarshal Login</h2>
+                <h2 className="text-2xl font-semibold text-center text-gray-800 mb-6">Welcome To EduRoll</h2>
                 
                 <form onSubmit={handleLogin}>
                     <div className="mb-4">
