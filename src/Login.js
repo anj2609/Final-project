@@ -34,7 +34,7 @@ function Login() {
         payload.append("username", username);
         payload.append("password", password);
 
-        const loginUrl = "https://akgecerp.edumarshal.com/Token";
+        const loginUrl = "/Token";
 
         try {
             const response = await axios.post(loginUrl, payload, {
