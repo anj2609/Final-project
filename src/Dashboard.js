@@ -5,15 +5,14 @@ import { useLocation } from "react-router-dom";
 import {
   BarChart,
   
-  XAxis,
-  YAxis,
+
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
 import { PieChart, Pie, Cell } from "recharts";
 import {
-  CalendarDays,
+  
   GraduationCap,
   CheckCircle,
   XCircle,
