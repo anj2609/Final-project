@@ -48,6 +48,18 @@ const StatCard = ({ title, value, description, icon: Icon, color }) => (
   </GlassCard>
 );
 
+const FunnyQuote = ({ attendance }) => {
+  if (attendance >= 85) return null;
+  
+  return (
+    <div className={`${attendance >= 75 ? 'bg-green-500/20 border-green-500/30' : 'bg-red-500/20 border-red-500/30'} border rounded-lg p-4 mt-4 animate-bounce`}>
+      <p className={`${attendance >= 75 ? 'text-green-300' : 'text-red-300'} text-center font-bold text-lg`}>
+        {attendance >= 75 ? '"Shabash mere sher! 🦁"' : '"Tu toh gaya bete! 😅"'}
+      </p>
+    </div>
+  );
+};
+
 function Dashboard() {
   const { state } = useLocation();
   const [userDetails, setUserDetails] = useState(null);
@@ -350,6 +362,7 @@ function Dashboard() {
               </button>
             </div>
           </div>
+          <FunnyQuote attendance={(stats.present / stats.total) * 100} />
         </div>
 
 
