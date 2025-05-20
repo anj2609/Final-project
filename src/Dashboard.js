@@ -19,12 +19,13 @@ import {
   XCircle,
   LogOut,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  X
 } from "lucide-react";
 
 
 const GlassCard = ({ className = "", children }) => (
-  <div className={`bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden ${className}`}>
+  <div className={`bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 overflow-hidden hover:bg-white/20 transition-all duration-300 ${className}`}>
     {children}
   </div>
 );
@@ -35,12 +36,14 @@ const StatCard = ({ title, value, description, icon: Icon, color }) => (
     <div className="p-6 flex flex-col justify-between h-full">
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">{title}</h3>
-          <div className="text-3xl font-bold text-gray-900">{value}</div>
+          <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+          <div className="text-3xl font-bold text-white">{value}</div>
         </div>
-        <Icon className={`h-7 w-7 text-${color}-500 opacity-70`} />
+        <div className="bg-white/20 p-3 rounded-full">
+          <Icon className={`h-7 w-7 text-white`} />
+        </div>
       </div>
-      <p className="text-sm text-gray-500 mt-3">{description}</p>
+      <p className="text-sm text-gray-300 mt-3">{description}</p>
     </div>
   </GlassCard>
 );
@@ -51,11 +54,17 @@ function Dashboard() {
   const [attendanceData, setAttendanceData] = useState({
     stdSubAtdDetails: [],
   });
+  const [dailyAttendance, setDailyAttendance] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
   const [statusMessage, setStatusMessage] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
 
   useEffect(() => {
     const storedHeaders = JSON.parse(localStorage.getItem('authHeaders'));
+    console.log('Auth Headers:', storedHeaders);
 
     if (!storedHeaders || !storedHeaders["X-Userid"]) {
       setStatusMessage("No headers or user ID available. Redirecting...");
@@ -72,11 +81,15 @@ function Dashboard() {
     const userDetailsUrl = `/api/User/GetByUserId/${userId}?y=0`;
 
     try {
+      console.log('Fetching user details from:', userDetailsUrl);
+      console.log('Using headers:', headers);
       const response = await axios.get(userDetailsUrl, { headers });
+      console.log('User Details Response:', response.data);
       
       setUserDetails(response.data);
       setStatusMessage("User details fetched successfully!");
     } catch (error) {
+      console.error('Error fetching user details:', error);
       setStatusMessage(
         `Error fetching user details: ${
           error.response?.data?.error || error.message
@@ -89,17 +102,186 @@ function Dashboard() {
     const attendanceUrl = `/api/SubjectAttendance/GetPresentAbsentStudent?isDateWise=false&termId=0&userId=${userId}&y=0`;
 
     try {
+      console.log('Fetching attendance data from:', attendanceUrl);
+      console.log('Using headers:', headers);
       const response = await axios.get(attendanceUrl, { headers });
+      console.log('Main Attendance Response:', response.data);
       
-
       setAttendanceData(response.data);
     } catch (error) {
+      console.error('Error fetching attendance data:', error);
       setStatusMessage(
         `Error fetching attendance data: ${
           error.response?.data?.error || error.message
         }`
       );
     }
+  };
+
+  const getSubjectAttendanceData = () => {
+    if (
+      attendanceData?.stdSubAtdDetails?.subjects &&
+      Array.isArray(attendanceData.stdSubAtdDetails.subjects)
+    ) {
+      return attendanceData.stdSubAtdDetails.subjects.flat().map((subject) => {
+        console.log('Subject Details:', subject); // Log complete subject details
+        return {
+          name: subject.name || "Unknown",
+          id: subject.id || subject.subjectId,
+          Present: subject.presentLeactures || 0,
+          Absent:
+            (subject.totalLeactures || 0) - (subject.presentLeactures || 0),
+          percentage: subject.percentageAttendance || 100,
+        };
+      });
+    }
+    return [];
+  };
+
+  const subjectAttendanceData = getSubjectAttendanceData();
+
+  const getDailyAttendance = async (subjectId, headers) => {
+    const dailyAttendanceUrl = `/api/SubjectAttendance/GetPresentAbsentStudent?isDateWise=true&termId=0&userId=${headers["X-Userid"]}&y=0&subjectId=${subjectId}&isDetailed=true`;
+
+    try {
+      const response = await axios.get(dailyAttendanceUrl, { headers });
+      
+      // Filter and sort attendance data
+      let records = response.data.attendanceData || [];
+      
+      // Filter for the specific subject
+      records = records.filter(record => record.subjectId === subjectId);
+      
+      // Sort by date (latest first)
+      records.sort((a, b) => {
+        const dateA = new Date(a.absentDate);
+        const dateB = new Date(b.absentDate);
+        return dateB - dateA; // Sort in descending order (latest first)
+      });
+      
+      // Map to required format
+      records = records.map(record => ({
+        date: record.absentDate,
+        subjectName: record.subjectName,
+        isPresent: !record.isAbsent,
+        attendanceType: record.attandanceType,
+        attendanceId: record.attendanceID
+      }));
+      
+      console.log('Sorted Records:', records);
+      setDailyAttendance(records);
+      setCurrentPage(1);
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error('Daily Attendance API Error:', error);
+      setStatusMessage(
+        `Error fetching daily attendance: ${
+          error.response?.data?.error || error.message
+        }`
+      );
+    }
+  };
+
+  const handleSubjectClick = (data) => {
+    console.log('Clicked Subject Data:', data);
+    // Get the original subject data from attendanceData
+    const subject = attendanceData?.stdSubAtdDetails?.subjects
+      ?.flat()
+      ?.find(s => s.name === data.name);
+    
+    if (!subject) {
+      console.error('Could not find subject in original data:', data);
+      setStatusMessage("Error: Could not find subject details");
+      return;
+    }
+
+    console.log('Found Subject:', subject);
+    setSelectedSubject(subject);
+    const storedHeaders = JSON.parse(localStorage.getItem('authHeaders'));
+    getDailyAttendance(subject.id || subject.subjectId, storedHeaders);
+  };
+
+  const Modal = ({ isOpen, onClose, children }) => {
+    if (!isOpen) return null;
+
+    // Calculate pagination
+    const indexOfLastRecord = currentPage * recordsPerPage;
+    const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+    const currentRecords = dailyAttendance.slice(indexOfFirstRecord, indexOfLastRecord);
+    const totalPages = Math.ceil(dailyAttendance.length / recordsPerPage);
+
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-slate-900 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto border border-white/10">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">
+              {selectedSubject?.name} - Daily Attendance
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-4 gap-4 font-semibold text-gray-300 border-b border-gray-700 pb-2">
+              <div>Date</div>
+              <div>Subject</div>
+              <div>Status</div>
+              <div>Type</div>
+            </div>
+            {currentRecords.length > 0 ? (
+              currentRecords.map((record, index) => (
+                <div key={index} className="grid grid-cols-4 gap-4 border-b border-gray-700 pb-2">
+                  <div className="text-white">{new Date(record.date).toLocaleDateString()}</div>
+                  <div className="text-white">{record.subjectName}</div>
+                  <div className={`${record.isPresent ? 'text-green-400' : 'text-red-400'}`}>
+                    {record.isPresent ? 'Present' : 'Absent'}
+                  </div>
+                  <div className="text-white">{record.attendanceType === 1 ? 'Regular' : 'Extra'}</div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-gray-400">
+                No attendance records found for this subject
+              </div>
+            )}
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={`px-4 py-2 rounded ${
+                    currentPage === 1
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  Previous
+                </button>
+                <span className="text-gray-300">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className={`px-4 py-2 rounded ${
+                    currentPage === totalPages
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const getStats = () => {
@@ -125,24 +307,6 @@ function Dashboard() {
 
   const stats = getStats();
 
-  const getSubjectAttendanceData = () => {
-    if (
-      attendanceData?.stdSubAtdDetails?.subjects &&
-      Array.isArray(attendanceData.stdSubAtdDetails.subjects)
-    ) {
-      return attendanceData.stdSubAtdDetails.subjects.flat().map((subject) => ({
-        name: subject.name || "Unknown",
-        Present: subject.presentLeactures || 0,
-        Absent:
-          (subject.totalLeactures || 0) - (subject.presentLeactures || 0),
-        percentage: subject.percentageAttendance || 100,
-      }));
-    }
-    return [];
-  };
-
-  const subjectAttendanceData = getSubjectAttendanceData();
-
   const pieData = [
     { name: "Present", value: stats.present },
     { name: "Absent", value: stats.absent },
@@ -150,7 +314,7 @@ function Dashboard() {
   const COLORS = ["#6366F1", "#aab7fa"]; 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
 
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl p-6 shadow-2xl">
@@ -219,7 +383,7 @@ function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <GlassCard>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 Attendance Distribution
               </h3>
               <div className="h-64">
@@ -238,13 +402,12 @@ function Dashboard() {
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
-                
               </div>
-                <div className="text-sm text-gray-600 text-center mt-6">
+              <div className="text-sm text-gray-300 text-center mt-6">
                 {stats.needed > 0 ? (
                   <p>
                     You need to attend at least{" "}
-                    <span className="font-medium text-red-700">
+                    <span className="font-medium text-red-400">
                       {stats.needed}
                     </span>{" "}
                     more classes to maintain 75% attendance.
@@ -252,7 +415,7 @@ function Dashboard() {
                 ) : (
                   <p>
                     You can miss up to{" "}
-                    <span className="font-medium text-green-700">
+                    <span className="font-medium text-green-400">
                       {stats.canMiss}
                     </span>{" "}
                     classes while maintaining 75% attendance.
@@ -264,36 +427,89 @@ function Dashboard() {
 
           <GlassCard>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Subject Attendance
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Subject-wise Attendance
               </h3>
-              <div className="h-64 overflow-x-auto">
-                <ResponsiveContainer width="150%" height="100%">
-                  <BarChart
-                    data={subjectAttendanceData}
-                    margin={{ top: 10, right: 30, left: 10, bottom: 45 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="name"
-                      tickFormatter={(name) =>
-                        name.length > 10 ? `${name.slice(0, 10)}...` : name
-                      }
-                      tick={{ fontSize: 11, fill: "#4B5563" }}
-                      angle={-45}
-                      textAnchor="end"
-                      dy={10}
-                    />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="percentage" fill="#6366F1" name="Attendance %" />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-700">
+                  <thead className="bg-white/10">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Subject
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Attendance
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {subjectAttendanceData.map((subject, index) => (
+                      <tr 
+                        key={index}
+                        onClick={() => handleSubjectClick(subject)}
+                        className="hover:bg-white/10 cursor-pointer transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-white">
+                            {subject.name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-white">
+                            {subject.percentage}%
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {subject.Present} present / {subject.Present + subject.Absent} total
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            subject.percentage >= 75
+                              ? 'bg-green-400/20 text-green-300'
+                              : 'bg-red-400/20 text-red-300'
+                          }`}>
+                            {subject.percentage >= 75 ? 'Good' : 'At Risk'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </GlassCard>
         </div>
       </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-4 gap-4 font-semibold text-gray-700 border-b pb-2">
+            <div>Date</div>
+            <div>Subject</div>
+            <div>Status</div>
+            <div>Type</div>
+          </div>
+          {Array.isArray(dailyAttendance) && dailyAttendance.length > 0 ? (
+            dailyAttendance.map((record, index) => (
+              <div key={index} className="grid grid-cols-4 gap-4 border-b pb-2">
+                <div>{new Date(record.date).toLocaleDateString()}</div>
+                <div>{record.subjectName}</div>
+                <div className={`${record.isPresent ? 'text-green-600' : 'text-red-600'}`}>
+                  {record.isPresent ? 'Present' : 'Absent'}
+                </div>
+                <div>{record.attendanceType === 1 ? 'Regular' : 'Extra'}</div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              No attendance records found for this subject
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
