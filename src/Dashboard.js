@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import {
   BarChart,
-  Bar,
+  
   XAxis,
   YAxis,
   CartesianGrid,
